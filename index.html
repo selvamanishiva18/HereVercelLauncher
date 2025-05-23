@@ -298,8 +298,11 @@
             const proxy = document.getElementById('proxySelect').value;
             
             // Apply CORS proxy to the GitHub URLs
-            const proxiedUrl1 = proxy ? proxy + encodeURIComponent(file1Url) : file1Url;
-            const proxiedUrl2 = proxy ? proxy + encodeURIComponent(file2Url) : file2Url;
+            //const proxiedUrl1 = proxy ? proxy + encodeURIComponent(file1Url) : file1Url;
+            //const proxiedUrl2 = proxy ? proxy + encodeURIComponent(file2Url) : file2Url;
+
+            const proxiedUrl1 = file1Url
+            const proxiedUrl2 = file2Url;
 
             // Construct the final tour planner URL in the exact format required
             const tourPlannerUrl = `https://demo.tourplanning.ext.here.com/?file-url=${proxiedUrl1},${proxiedUrl2}`;
