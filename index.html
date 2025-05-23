@@ -79,6 +79,19 @@
             box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
         }
 
+        .proxy-selector {
+            margin-bottom: 20px;
+        }
+
+        .proxy-selector select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e1e5e9;
+            border-radius: 8px;
+            font-size: 1rem;
+            background: #f8f9fa;
+        }
+
         .launch-btn {
             width: 100%;
             padding: 18px;
@@ -137,6 +150,33 @@
             border: 1px solid #bee5eb;
         }
 
+        .preview {
+            margin-top: 20px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border: 1px solid #e9ecef;
+        }
+
+        .preview h3 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 1rem;
+        }
+
+        .preview code {
+            display: block;
+            background: #e9ecef;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 0.85rem;
+            color: #495057;
+            word-break: break-all;
+            margin: 5px 0;
+            line-height: 1.4;
+        }
+
         .example {
             margin-top: 20px;
             padding: 15px;
@@ -174,21 +214,6 @@
         .popup-info strong {
             color: #333;
         }
-
-        .loading {
-            display: inline-block;
-            width: 20px;
-            height: 20px;
-            border: 3px solid rgba(255,255,255,.3);
-            border-radius: 50%;
-            border-top-color: #fff;
-            animation: spin 1s ease-in-out infinite;
-            margin-right: 10px;
-        }
-
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
     </style>
 </head>
 <body>
@@ -209,12 +234,27 @@
                 <input type="url" id="file2" name="file2" placeholder="https://raw.githubusercontent.com/user/repo/branch/file2.json" required>
             </div>
 
+            <div class="proxy-selector">
+                <label for="proxySelect">CORS Proxy:</label>
+                <select id="proxySelect">
+                    <option value="https://api.allorigins.win/raw?url=">AllOrigins (Recommended)</option>
+                    <option value="https://corsproxy.io/?">CorsProxy.io</option>
+                    <option value="https://api.codetabs.com/v1/proxy?quest=">CodeTabs</option>
+                    <option value="">No Proxy (Direct URLs)</option>
+                </select>
+            </div>
+
             <button type="submit" class="launch-btn" id="launchBtn">
                 🚀 Launch Tour Planner
             </button>
         </form>
 
         <div id="status" class="status"></div>
+
+        <div id="preview" class="preview" style="display: none;">
+            <h3>🔗 Generated URL:</h3>
+            <code id="previewUrl"></code>
+        </div>
 
         <div class="example">
             <h3>📝 Example URLs:</h3>
@@ -228,16 +268,6 @@
     </div>
 
     <script>
-        // CORS Proxy Configuration
-        const CORS_PROXIES = [
-            'https://api.allorigins.win/raw?url=',
-            'https://corsproxy.io/?',
-            'https://cors-anywhere.herokuapp.com/',
-            'https://api.codetabs.com/v1/proxy?quest='
-        ];
-
-        let currentProxyIndex = 0;
-
         // Utility functions
         function showStatus(message, type = 'info') {
             const statusEl = document.getElementById('status');
@@ -245,143 +275,62 @@
             statusEl.className = `status ${type}`;
             statusEl.style.display = 'block';
             
-            if (type === 'success' || type === 'info') {
+            if (type === 'success') {
                 setTimeout(() => {
                     statusEl.style.display = 'none';
                 }, 5000);
             }
         }
 
-        function setLoading(isLoading) {
-            const btn = document.getElementById('launchBtn');
-            if (isLoading) {
-                btn.innerHTML = '<span class="loading"></span>Processing...';
-                btn.disabled = true;
-            } else {
-                btn.innerHTML = '🚀 Launch Tour Planner';
-                btn.disabled = false;
-            }
+        function showPreview(url) {
+            const previewEl = document.getElementById('preview');
+            const urlEl = document.getElementById('previewUrl');
+            urlEl.textContent = url;
+            previewEl.style.display = 'block';
         }
 
-        // Fetch with CORS proxy
-        async function fetchWithProxy(url, proxyIndex = 0) {
-            if (proxyIndex >= CORS_PROXIES.length) {
-                throw new Error('All CORS proxies failed');
-            }
-
-            const proxy = CORS_PROXIES[proxyIndex];
-            const proxyUrl = proxy + encodeURIComponent(url);
-
-            try {
-                const response = await fetch(proxyUrl, {
-                    method: 'GET',
-                    headers: {
-                        'Accept': 'application/json',
-                    }
-                });
-
-                if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-                }
-
-                const data = await response.text();
-                
-                // Validate JSON
-                try {
-                    JSON.parse(data);
-                    return data;
-                } catch (e) {
-                    throw new Error('Invalid JSON response');
-                }
-
-            } catch (error) {
-                console.warn(`Proxy ${proxyIndex + 1} failed:`, error.message);
-                return fetchWithProxy(url, proxyIndex + 1);
-            }
-        }
-
-        // Create temporary URLs for the fetched data
-        function createTempUrl(jsonData, filename) {
-            // Create a simple HTTP server endpoint simulation
-            // In a real implementation, you'd have a backend server
-            const blob = new Blob([jsonData], { type: 'application/json' });
-            const url = URL.createObjectURL(blob);
-            
-            // Store in a way that can be accessed by a simple endpoint
-            const tempId = 'temp_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
-            
-            // Since we can't create actual HTTP endpoints in the browser,
-            // we'll use a workaround with the allorigins.win service
-            // which can serve our content
-            return `https://api.allorigins.win/raw?url=${encodeURIComponent('data:application/json;charset=utf-8,' + encodeURIComponent(jsonData))}`;
-        }
-
-        // Alternative approach: Use a simple proxy server endpoint
-        async function createProxyEndpoint(jsonData, identifier) {
-            // This would typically be handled by your backend
-            // For demo purposes, we'll use a data URL approach
-            const base64Data = btoa(jsonData);
-            return `data:application/json;base64,${base64Data}`;
+        function hidePreview() {
+            document.getElementById('preview').style.display = 'none';
         }
 
         // Main launch function
-        async function launchTourPlanner(file1Url, file2Url) {
-            setLoading(true);
-            showStatus('Fetching GitHub files...', 'info');
+        function launchTourPlanner(file1Url, file2Url) {
+            const proxy = document.getElementById('proxySelect').value;
+            
+            // Apply CORS proxy to the GitHub URLs
+            const proxiedUrl1 = proxy ? proxy + encodeURIComponent(file1Url) : file1Url;
+            const proxiedUrl2 = proxy ? proxy + encodeURIComponent(file2Url) : file2Url;
 
-            try {
-                // Fetch both files through CORS proxy
-                showStatus('Downloading first file...', 'info');
-                const file1Data = await fetchWithProxy(file1Url);
-                
-                showStatus('Downloading second file...', 'info');
-                const file2Data = await fetchWithProxy(file2Url);
+            // Construct the final tour planner URL in the exact format required
+            const tourPlannerUrl = `https://demo.tourplanning.ext.here.com/?file-url=${proxiedUrl1},${proxiedUrl2}`;
 
-                showStatus('Creating proxy endpoints...', 'info');
+            // Show preview
+            showPreview(tourPlannerUrl);
 
-                // Create temporary accessible URLs
-                // In a real scenario, you'd post this data to your backend
-                // and get back proper HTTP URLs
-                
-                // For this demo, we'll use a combination approach
-                const proxyBaseUrl = 'https://api.allorigins.win/raw?url=';
-                const encodedFile1 = encodeURIComponent('data:application/json;charset=utf-8,' + encodeURIComponent(file1Data));
-                const encodedFile2 = encodeURIComponent('data:application/json;charset=utf-8,' + encodeURIComponent(file2Data));
-                
-                const proxyUrl1 = proxyBaseUrl + encodedFile1;
-                const proxyUrl2 = proxyBaseUrl + encodedFile2;
+            showStatus('Opening tour planner...', 'info');
 
-                // Construct the final tour planner URL
-                const tourPlannerUrl = `https://demo.tourplanning.ext.here.com/?file-url=${proxyUrl1},${proxyUrl2}`;
+            // Open in popup
+            const popup = window.open(
+                tourPlannerUrl,
+                'tourPlanner',
+                'width=1200,height=800,scrollbars=yes,resizable=yes,toolbar=no,menubar=no,location=no,status=no'
+            );
 
-                showStatus('Opening tour planner...', 'success');
-
-                // Open in popup
-                const popup = window.open(
-                    tourPlannerUrl,
-                    'tourPlanner',
-                    'width=1200,height=800,scrollbars=yes,resizable=yes,toolbar=no,menubar=no,location=no,status=no'
-                );
-
-                if (!popup) {
-                    throw new Error('Popup blocked. Please allow popups for this site.');
-                }
-
-                showStatus('Tour planner launched successfully!', 'success');
-
-                // Focus on the popup
-                popup.focus();
-
-            } catch (error) {
-                console.error('Launch failed:', error);
-                showStatus(`Error: ${error.message}`, 'error');
-            } finally {
-                setLoading(false);
+            if (!popup) {
+                showStatus('Popup blocked. Please allow popups for this site.', 'error');
+                return false;
             }
+
+            showStatus('Tour planner launched successfully!', 'success');
+
+            // Focus on the popup
+            popup.focus();
+
+            return true;
         }
 
         // Form submission handler
-        document.getElementById('tourForm').addEventListener('submit', async function(e) {
+        document.getElementById('tourForm').addEventListener('submit', function(e) {
             e.preventDefault();
             
             const file1 = document.getElementById('file1').value.trim();
@@ -390,31 +339,54 @@
             // Validate URLs
             if (!file1 || !file2) {
                 showStatus('Please provide both GitHub raw URLs', 'error');
+                hidePreview();
                 return;
             }
 
-            // Check if URLs are GitHub raw URLs
+            // Basic URL validation
+            try {
+                new URL(file1);
+                new URL(file2);
+            } catch (error) {
+                showStatus('Please enter valid URLs', 'error');
+                hidePreview();
+                return;
+            }
+
+            // Check if URLs are GitHub raw URLs (optional validation)
             const githubRawPattern = /^https:\/\/raw\.githubusercontent\.com\//;
             if (!githubRawPattern.test(file1) || !githubRawPattern.test(file2)) {
-                showStatus('Please use GitHub raw URLs (raw.githubusercontent.com)', 'error');
-                return;
+                showStatus('Warning: URLs should be GitHub raw URLs for best results', 'info');
             }
 
-            await launchTourPlanner(file1, file2);
+            launchTourPlanner(file1, file2);
         });
 
-        // Populate example data for testing
-        document.addEventListener('DOMContentLoaded', function() {
-            // You can uncomment these for testing with real URLs
-            // document.getElementById('file1').value = 'https://raw.githubusercontent.com/example/repo/main/data1.json';
-            // document.getElementById('file2').value = 'https://raw.githubusercontent.com/example/repo/main/data2.json';
-        });
+        // Real-time URL preview
+        function updatePreview() {
+            const file1 = document.getElementById('file1').value.trim();
+            const file2 = document.getElementById('file2').value.trim();
+            
+            if (file1 && file2) {
+                const proxy = document.getElementById('proxySelect').value;
+                const proxiedUrl1 = proxy ? proxy + encodeURIComponent(file1) : file1;
+                const proxiedUrl2 = proxy ? proxy + encodeURIComponent(file2) : file2;
+                const tourPlannerUrl = `https://tourplanning.ext.here.com/?file-url=${proxiedUrl1},${proxiedUrl2}`;
+                showPreview(tourPlannerUrl);
+            } else {
+                hidePreview();
+            }
+        }
+
+        // Add event listeners for real-time preview
+        document.getElementById('file1').addEventListener('input', updatePreview);
+        document.getElementById('file2').addEventListener('input', updatePreview);
+        document.getElementById('proxySelect').addEventListener('change', updatePreview);
 
         // Handle popup blocker detection
         function detectPopupBlocker() {
             const popup = window.open('', 'test', 'width=1,height=1');
             if (!popup) {
-                showStatus('Popup blocker detected. Please allow popups for this site.', 'error');
                 return false;
             }
             popup.close();
