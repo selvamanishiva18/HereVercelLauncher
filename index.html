@@ -295,7 +295,7 @@
 
         // Main launch function
         function launchTourPlanner(file1Url, file2Url) {
-            const proxy = document.getElementById('proxySelect').value;
+           // const proxy = document.getElementById('proxySelect').value;
             
             // Apply CORS proxy to the GitHub URLs
             //const proxiedUrl1 = proxy ? proxy + encodeURIComponent(file1Url) : file1Url;
@@ -371,9 +371,11 @@
             const file2 = document.getElementById('file2').value.trim();
             
             if (file1 && file2) {
-                const proxy = document.getElementById('proxySelect').value;
-                const proxiedUrl1 = proxy ? proxy + encodeURIComponent(file1) : file1;
-                const proxiedUrl2 = proxy ? proxy + encodeURIComponent(file2) : file2;
+                //const proxy = document.getElementById('proxySelect').value;
+                //const proxiedUrl1 = proxy ? proxy + encodeURIComponent(file1) : file1;
+                //const proxiedUrl2 = proxy ? proxy + encodeURIComponent(file2) : file2;
+                const proxiedUrl1 =   file1;
+                const proxiedUrl2 =   file2;
                 const tourPlannerUrl = `https://tourplanning.ext.here.com/?file-url=${proxiedUrl1},${proxiedUrl2}`;
                 showPreview(tourPlannerUrl);
             } else {
@@ -384,7 +386,7 @@
         // Add event listeners for real-time preview
         document.getElementById('file1').addEventListener('input', updatePreview);
         document.getElementById('file2').addEventListener('input', updatePreview);
-        document.getElementById('proxySelect').addEventListener('change', updatePreview);
+        //document.getElementById('proxySelect').addEventListener('change', updatePreview);
 
         // Handle popup blocker detection
         function detectPopupBlocker() {
